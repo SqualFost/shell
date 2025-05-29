@@ -16,4 +16,8 @@ cd
 ls (-a / -l / -la)
 ```
 
+```bash
+exit
+```
+
 Le reste est à venir, ça viendra avec le temps..
