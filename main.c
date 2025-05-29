@@ -15,10 +15,12 @@ typedef struct
 void pwd(char **args);
 void ls(char **args);
 void exit_cmd(char **args);
+void cd(char **args);
 
 Commandes commandes[] = {
     {"pwd", pwd},
     {"ls", ls},
+    {"cd", cd},
     {"exit", exit_cmd},
     {NULL, NULL} // Fin de la liste des commandes
 };
@@ -92,6 +94,20 @@ void ls(char **args)
         printf("%s\n", myfile->d_name);
     }
     closedir(mydir);
+}
+
+void cd(char **args)
+{
+    if (args[1] == NULL)
+    {
+        fprintf(stderr, "cd: argument requis\n");
+        return;
+    }
+
+    if (chdir(args[1]) != 0)
+    {
+        fprintf(stderr, "cd : Aucun fichier ou dossier de ce type\n");
+    }
 }
 
 void exit_cmd(char **args)
