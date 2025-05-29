@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <dirent.h>
+#include <sys/stat.h>
+#include <pwd.h>
+#include <grp.h>
 
 #define MAX_TOKENS 20
 
@@ -25,14 +28,14 @@ Commandes commandes[] = {
     {NULL, NULL} // Fin de la liste des commandes
 };
 
+struct stat info;
+
 int main(void)
 {
     char input[100];
     char cwd[1024];
-    char *array[MAX_TOKENS]; // Tableau de pointeurs sur char
+    char *array[MAX_TOKENS];
     char *ptrInput;
-    DIR *mydir;
-    struct dirent *myfile;
 
     while (1)
     {
@@ -42,17 +45,10 @@ int main(void)
 
         input[strcspn(input, "\n")] = 0;
 
-        if (array == NULL)
-        {
-            perror("Pas d'allocation mémoire");
-            exit(EXIT_FAILURE);
-        }
-
         int i = 0;
         ptrInput = strtok(input, " ");
         while (ptrInput != NULL && i < MAX_TOKENS)
         {
-            printf("%s\n", ptrInput);
             array[i++] = ptrInput;
             ptrInput = strtok(NULL, " ");
         }
@@ -74,7 +70,7 @@ void pwd(char **args)
 {
     char cwd[1024];
     getcwd(cwd, sizeof(cwd));
-    printf("votre chemin est : %s\n", cwd);
+    printf("votre chemin est : %s\n", cwd); // Affiche le répertoire courant
 }
 
 void ls(char **args)
@@ -83,7 +79,7 @@ void ls(char **args)
     struct dirent *myfile;
 
     mydir = opendir(".");
-    if (mydir == NULL)
+    if (mydir == NULL) // Si null, afficher une erreur
     {
         perror("Erreur lors de l'ouverture du répertoire");
         return;
@@ -91,22 +87,51 @@ void ls(char **args)
 
     while ((myfile = readdir(mydir)) != NULL)
     {
-        printf("%s\n", myfile->d_name);
+
+        if (strcmp(args[1], "-a") == 0) // Si l'argument est "-a", afficher tous les fichiers (. et .. inclus)
+        {
+            printf("%s\n", myfile->d_name);
+        }
+        else if (strcmp(args[1], "-l") == 0) // Si l'argument est "-l", afficher les détails des fichiers sauf les "." et ".."
+        {
+            if (stat(myfile->d_name, &info) == 0 && strcmp(myfile->d_name, ".") != 0 && strcmp(myfile->d_name, "..") != 0) // Obtenir les informations du fichier
+            {
+                struct passwd *pw = getpwuid(info.st_uid);
+                struct group *gr = getgrgid(info.st_gid);
+                printf("%ld %s %s %-8ld %s\n", (long)info.st_nlink, pw->pw_name, gr->gr_name, info.st_size, myfile->d_name); // Afficher les infos du fichier
+            }
+        }
+        else if (strcmp(args[1], "-la") == 0) // Si l'argument est "-la", afficher les détails des fichiers
+        {
+            if (stat(myfile->d_name, &info) == 0) // Obtenir les informations du fichier
+            {
+                struct passwd *pw = getpwuid(info.st_uid);
+                struct group *gr = getgrgid(info.st_gid);
+                printf("%ld %s %s %-8ld %s\n", (long)info.st_nlink, pw->pw_name, gr->gr_name, info.st_size, myfile->d_name); // Afficher les infos du fichier
+            }
+        }
+        else // si seulement ls (ou autres arguments)
+        {
+            if (strcmp(myfile->d_name, ".") != 0 && strcmp(myfile->d_name, "..") != 0)
+            {
+                printf("%s\n", myfile->d_name);
+            }
+        }
     }
     closedir(mydir);
 }
 
 void cd(char **args)
 {
-    if (args[1] == NULL)
+    if (args[1] == NULL) // Si aucun argument, afficher un message d'erreur
     {
         fprintf(stderr, "cd: argument requis\n");
         return;
     }
 
-    if (chdir(args[1]) != 0)
+    if (chdir(args[1]) != 0) // Changer de répertoire
     {
-        fprintf(stderr, "cd : Aucun fichier ou dossier de ce type\n");
+        fprintf(stderr, "cd : Aucun fichier ou dossier de ce type\n"); // Afficher une erreur si le répertoire n'existe pas
     }
 }
 
